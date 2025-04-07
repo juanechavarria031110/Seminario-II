@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CRUD de Usuarios</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+  <h1>INFORMACIÓN DE USUARIOS</h1>
+
+  <div class="contenedor-crud">
+    <!-- Sección Izquierda: Crear nuevo usuario -->
+    <form id="formulario">
+      <h2>Crear nuevo usuario</h2>
+      <input type="text" id="nombre" placeholder="Nombre" />
+      <input type="email" id="email" placeholder="Email" />
+      <input type="password" id="password" placeholder="Password" />
+      <button type="button" class="crear" onclick="crearUsuario()">Craar</button>
+    </form>
+
+    <!-- Sección Derecha: Lista de usuarios -->
+    <div class="usuarios-container">
+      <h2>Lista de usuarios</h2>
+
+      <!-- Campo de búsqueda -->
+      <div class="busqueda-contenedor">
+        <input type="text" id="busqueda" placeholder="Buscar por nombre" />
+        <button onclick="filtrarUsuarios()">Buscar</button>
+        <button class="obtener" onclick="toggleUsuarios()">Mostrar/Ocultar usuarios</button>
+      </div>
+
+      <div id="usuarios-list"></div>
+    </div>
+  </div>
+
+  <script>
+    const baseUrl = "http://127.0.0.1:5000/usuarios";
+    let usuariosOriginales = [];
+
+    function crearUsuario() {
+      const nombre = document.getElementById("nombre").value;
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      fetch(`${baseUrl}/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, email, password })
+      })
+      .then(res => res.json())
+      .then(() => {
+        alert("Usuario creado");
+        document.getElementById("formulario").reset();
+        obtenerUsuarios();
+      })
+      .catch(err => console.error(err));
+    }
+
+    function obtenerUsuarios() {
+      fetch(`${baseUrl}/`)
+        .then(res => res.json())
+        .then(data => {
+          usuariosOriginales = data;
+          mostrarUsuarios(data);
+        })
+        .catch(err => console.error(err));
+    }
+
+    function mostrarUsuarios(usuarios) {
+      const container = document.getElementById("usuarios-list");
+      container.innerHTML = "";
+
+      const table = document.createElement("table");
+      table.className = "tabla-usuarios";
+
+      const header = `
+        <tr>
+          <th>Nombre</th>
+          <th>Email</th>
+          <th>ID</th>
+          <th>Acciones</th>
+        </tr>`;
+      table.innerHTML = header;
+
+      usuarios.forEach(usuario => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${usuario.nombre}</td>
+          <td>${usuario.email}</td>
+          <td>${usuario.id}</td>
+          <td>
+            <button class="eliminar" onclick="eliminarUsuario('${usuario.id}')">Eliminar</button>
+            <button class="actualizar" onclick="mostrarActualizar('${usuario.id}', '${usuario.nombre}', '${usuario.email}')">Editar</button>
+            <div id="form-${usuario.id}"></div>
+          </td>
+        `;
+        table.appendChild(row);
+      });
+
+      container.appendChild(table);
+    }
+
+    function eliminarUsuario(id) {
+      fetch(`${baseUrl}/${id}`, { method: "DELETE" })
+        .then(res => res.json())
+        .then(() => {
+          alert("Usuario eliminado");
+          obtenerUsuarios();
+        })
+        .catch(err => console.error(err));
+    }
+
+    function mostrarActualizar(id, nombreActual, emailActual) {
+      const formDiv = document.getElementById(`form-${id}`);
+      formDiv.innerHTML = `
+        <input type="text" id="nuevo-nombre-${id}" placeholder="Nuevo nombre" value="${nombreActual}" />
+        <input type="email" id="nuevo-email-${id}" placeholder="Nuevo email" value="${emailActual}" />
+        <button class="guardar" onclick="actualizarUsuario('${id}')">Guardar</button>
+      `;
+    }
+
+    function actualizarUsuario(id) {
+      const nombre = document.getElementById(`nuevo-nombre-${id}`).value;
+      const email = document.getElementById(`nuevo-email-${id}`).value;
+
+      fetch(`${baseUrl}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, email })
+      })
+      .then(res => res.json())
+      .then(() => {
+        alert("Usuario actualizado");
+        obtenerUsuarios();
+      })
+      .catch(err => console.error(err));
+    }
+
+    function toggleUsuarios() {
+      const lista = document.getElementById("usuarios-list");
+      lista.classList.toggle("hidden");
+    }
+
+    function filtrarUsuarios() {
+      const texto = document.getElementById("busqueda").value.toLowerCase();
+      const filtrados = usuariosOriginales.filter(u => u.nombre.toLowerCase().includes(texto));
+      mostrarUsuarios(filtrados);
+    }
+
+    window.onload = () => obtenerUsuarios();
+  </script>
+
+</body>
+</html>
